@@ -9,33 +9,16 @@ import com.github.jonpeterson.jackson.module.versioning.VersionedModelConverter
 import com.github.jonpeterson.jackson.module.versioning.VersioningModule
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.SpringBootApplication
-import org.springframework.boot.autoconfigure.web.WebMvcRegistrationsAdapter
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.client.TestRestTemplate
 import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Configuration
-import org.springframework.context.annotation.Primary
-import org.springframework.core.MethodParameter
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
-import org.springframework.http.converter.HttpMessageConverter
-import org.springframework.stereotype.Controller
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.util.LinkedMultiValueMap
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestHeader
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RequestParam
-import org.springframework.web.bind.annotation.RestController
-import org.springframework.web.bind.support.WebDataBinderFactory
+import org.springframework.web.bind.annotation.*
 import org.springframework.web.client.DefaultResponseErrorHandler
-import org.springframework.web.context.request.NativeWebRequest
-import org.springframework.web.method.support.HandlerMethodArgumentResolver
-import org.springframework.web.method.support.HandlerMethodReturnValueHandler
-import org.springframework.web.method.support.ModelAndViewContainer
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter
-import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter
 import spock.lang.Specification
 
 @SpringBootTest(classes = TestApplication, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -135,7 +118,8 @@ class VersioningTest extends Specification {
         }
 
         @RequestMapping(value = '/2', consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-        @VersionedResponseBody(defaultVersion = '3', headerName = 'v', queryParamName = 'v') Car postAndReturn2(@RequestBody Car car) {
+        @VersionedResponseBody(defaultVersion = '3', headerName = 'v', queryParamName = 'v')
+        Car postAndReturn2(@RequestBody Car car) {
             car.make = 'somethingElse'
             return car
         }
@@ -165,7 +149,7 @@ class VersioningTest extends Specification {
         '/1?v=1' | [:]        | [model: 'honda:civic', year: 2016, new: 'true', modelVersion: '1'] | [model: 'somethingElse:civic', year: 2016, new: 'true', modelVersion: '1']
         '/1'     | [v: ['1']] | [model: 'honda:civic', year: 2016, new: 'true', modelVersion: '1'] | [model: 'somethingElse:civic', year: 2016, new: 'true', modelVersion: '1']
 
-        '/2'     | [:]        | [model: 'honda:civic', year: 2016, new: 'true', modelVersion: '1'] | [make: 'somethingElse', model: 'civic', year: 2016, new: 'true', modelVersion: '2']
+        '/2'     | [:]        | [model: 'honda:civic', year: 2016, new: 'true', modelVersion: '1'] | [make: 'somethingElse', model: 'civic', year: 2016, used: false, modelVersion: '3']
         '/2?v=1' | [:]        | [model: 'honda:civic', year: 2016, new: 'true', modelVersion: '1'] | [model: 'somethingElse:civic', year: 2016, new: 'true', modelVersion: '1']
         '/2'     | [v: ['1']] | [model: 'honda:civic', year: 2016, new: 'true', modelVersion: '1'] | [model: 'somethingElse:civic', year: 2016, new: 'true', modelVersion: '1']
     }
