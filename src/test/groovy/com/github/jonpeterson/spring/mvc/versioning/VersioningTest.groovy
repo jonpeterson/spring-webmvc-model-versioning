@@ -1,5 +1,7 @@
 package com.github.jonpeterson.spring.mvc.versioning
 
+import com.fasterxml.jackson.annotation.JsonSubTypes
+import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.JsonNodeFactory
 import com.fasterxml.jackson.databind.node.ObjectNode
@@ -17,8 +19,9 @@ import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.util.LinkedMultiValueMap
-import org.springframework.web.bind.annotation.*
-import org.springframework.web.client.DefaultResponseErrorHandler
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
 import spock.lang.Specification
 
 @SpringBootTest(classes = TestApplication, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -33,14 +36,35 @@ class VersioningTest extends Specification {
                         defaultSerializeToVersion = '2',
                         toCurrentConverterClass = ToCurrentCarConverter,
                         toPastConverterClass = ToPastCarConverter)
-    static class Car {
+    @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS)
+    @JsonSubTypes([
+        @JsonSubTypes.Type(SerializeToVersionFieldCar.class),
+        @JsonSubTypes.Type(SerializeToVersionMethodCar.class)
+    ])
+    static abstract class Car {
         String make
         String model
         int year
         boolean used
+    }
 
+    static class SerializeToVersionFieldCar extends Car {
         @JsonSerializeToVersion
         String serializeToVersion
+    }
+
+    static class SerializeToVersionMethodCar extends Car {
+        private String serializeToVersion
+
+        @JsonSerializeToVersion
+        String getSerializeToVersion() {
+            return serializeToVersion
+        }
+
+        @JsonSerializeToVersion
+        void setSerializeToVersion(String serializeToVersion) {
+            this.serializeToVersion = serializeToVersion
+        }
     }
 
 
@@ -107,19 +131,23 @@ class VersioningTest extends Specification {
             return new ObjectMapper().registerModule(new VersioningModule())
         }
 
-        @RequestMapping(value = '/1', consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-        Car postAndReturn1(@RequestParam(value = 'v', required = false) responseVersionUrlParam, @RequestHeader(value = 'v', required = false) responseVersionHeader, @RequestBody Car car) {
+        @RequestMapping(value = '/byHeader', consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+        @VersionedResponseBody(defaultVersion = '3', headerName = 'v')
+        Car byHeader(@RequestBody Car car) {
             car.make = 'somethingElse'
-            if(responseVersionHeader)
-                car.serializeToVersion = responseVersionHeader
-            else if(responseVersionUrlParam)
-                car.serializeToVersion = responseVersionUrlParam
             return car
         }
 
-        @RequestMapping(value = '/2', consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+        @RequestMapping(value = '/byParam', consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+        @VersionedResponseBody(defaultVersion = '3', queryParamName = 'v')
+        Car byParam(@RequestBody Car car) {
+            car.make = 'somethingElse'
+            return car
+        }
+
+        @RequestMapping(value = '/byEither', consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
         @VersionedResponseBody(defaultVersion = '3', headerName = 'v', queryParamName = 'v')
-        Car postAndReturn2(@RequestBody Car car) {
+        Car byEither(@RequestBody Car car) {
             car.make = 'somethingElse'
             return car
         }
@@ -130,27 +158,42 @@ class VersioningTest extends Specification {
     |* Test cases *|
     \**************/
 
-    def setup() {
-        // override TestRestTemplate's error swallowing
-        restTemplate.restTemplate.errorHandler = new DefaultResponseErrorHandler()
-    }
+    private static INv1 = [model: 'honda:civic', year: 2016, new: 'true', modelVersion: '1']
+    private static INv3 = [make: 'honda', model: 'civic', year: 2016, used: false, modelVersion: '3']
+    private static OUTv1 = [model: 'somethingElse:civic', year: 2016, new: 'true', modelVersion: '1']
+    private static OUTv3 = [make: 'somethingElse', model: 'civic', year: 2016, used: false, modelVersion: '3']
 
-    def 'abc'() {
+    def 'post, update, and return'() {
+        given:
+        inBody['@class'] = SerializeToVersionFieldCar.class.name
+
         expect:
-        def entity = new HttpEntity<Map>(inBody, new LinkedMultiValueMap<String, String>(headers))
-        with(restTemplate.exchange(url, HttpMethod.POST, entity, Map)) {
+        with(restTemplate.exchange(url, HttpMethod.POST, new HttpEntity<Map>(inBody, new LinkedMultiValueMap<String, String>(headers)), Map)) {
             statusCodeValue == 200
             body == outBody
         }
 
         where:
-        url      | headers    | inBody                                                             | outBody
-        '/1'     | [:]        | [model: 'honda:civic', year: 2016, new: 'true', modelVersion: '1'] | [make: 'somethingElse', model: 'civic', year: 2016, new: 'true', modelVersion: '2']
-        '/1?v=1' | [:]        | [model: 'honda:civic', year: 2016, new: 'true', modelVersion: '1'] | [model: 'somethingElse:civic', year: 2016, new: 'true', modelVersion: '1']
-        '/1'     | [v: ['1']] | [model: 'honda:civic', year: 2016, new: 'true', modelVersion: '1'] | [model: 'somethingElse:civic', year: 2016, new: 'true', modelVersion: '1']
+        url             | headers    | inBody | outBody
+        '/byHeader'     | [:]        | INv1   | OUTv3
+        '/byHeader'     | [:]        | INv3   | OUTv3
+        '/byHeader?v=1' | [:]        | INv1   | OUTv3
+        '/byHeader?v=1' | [:]        | INv3   | OUTv3
+        '/byHeader'     | [v: ['1']] | INv1   | OUTv1
+        '/byHeader'     | [v: ['1']] | INv3   | OUTv1
 
-        '/2'     | [:]        | [model: 'honda:civic', year: 2016, new: 'true', modelVersion: '1'] | [make: 'somethingElse', model: 'civic', year: 2016, used: false, modelVersion: '3']
-        '/2?v=1' | [:]        | [model: 'honda:civic', year: 2016, new: 'true', modelVersion: '1'] | [model: 'somethingElse:civic', year: 2016, new: 'true', modelVersion: '1']
-        '/2'     | [v: ['1']] | [model: 'honda:civic', year: 2016, new: 'true', modelVersion: '1'] | [model: 'somethingElse:civic', year: 2016, new: 'true', modelVersion: '1']
+        '/byParam'      | [:]        | INv1   | OUTv3
+        '/byParam'      | [:]        | INv3   | OUTv3
+        '/byParam?v=1'  | [:]        | INv1   | OUTv1
+        '/byParam?v=1'  | [:]        | INv3   | OUTv1
+        '/byParam'      | [v: ['1']] | INv1   | OUTv3
+        '/byParam'      | [v: ['1']] | INv3   | OUTv3
+
+        '/byEither'     | [:]        | INv1   | OUTv3
+        '/byEither'     | [:]        | INv3   | OUTv3
+        '/byEither?v=1' | [:]        | INv1   | OUTv1
+        '/byEither?v=1' | [:]        | INv3   | OUTv1
+        '/byEither'     | [v: ['1']] | INv1   | OUTv1
+        '/byEither'     | [v: ['1']] | INv3   | OUTv1
     }
 }
