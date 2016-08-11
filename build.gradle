@@ -3,7 +3,7 @@ buildscript {
         // external dependency versions
         groovyVersion = '2.4.5'
         gradleVersion = '2.14.1'
-        jacksonModuleModelVersioningVersion = '1.1.0'
+        jacksonModuleModelVersioningVersion = '1.1.1'
         licensePluginVersion = '0.13.1'
         releasePluginVersion = '2.4.0'
         spockVersion = '1.0-groovy-2.4'

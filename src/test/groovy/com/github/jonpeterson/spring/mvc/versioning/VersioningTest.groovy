@@ -1,3 +1,26 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2016 Jon Peterson
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 package com.github.jonpeterson.spring.mvc.versioning
 
 import com.fasterxml.jackson.annotation.JsonSubTypes
@@ -50,7 +73,7 @@ class VersioningTest extends Specification {
 
     static class SerializeToVersionFieldCar extends Car {
         @JsonSerializeToVersion
-        String serializeToVersion
+        public String serializeToVersion
     }
 
     static class SerializeToVersionMethodCar extends Car {
@@ -165,7 +188,7 @@ class VersioningTest extends Specification {
 
     def 'post, update, and return'() {
         given:
-        inBody['@class'] = SerializeToVersionFieldCar.class.name
+        inBody['@class'] = outBody['@class'] = clazz.name
 
         expect:
         with(restTemplate.exchange(url, HttpMethod.POST, new HttpEntity<Map>(inBody, new LinkedMultiValueMap<String, String>(headers)), Map)) {
@@ -174,26 +197,44 @@ class VersioningTest extends Specification {
         }
 
         where:
-        url             | headers    | inBody | outBody
-        '/byHeader'     | [:]        | INv1   | OUTv3
-        '/byHeader'     | [:]        | INv3   | OUTv3
-        '/byHeader?v=1' | [:]        | INv1   | OUTv3
-        '/byHeader?v=1' | [:]        | INv3   | OUTv3
-        '/byHeader'     | [v: ['1']] | INv1   | OUTv1
-        '/byHeader'     | [v: ['1']] | INv3   | OUTv1
+        url             | headers    | clazz                       | inBody | outBody
+        '/byHeader'     | [:]        | SerializeToVersionFieldCar  | INv1   | OUTv3
+        '/byHeader'     | [:]        | SerializeToVersionMethodCar | INv1   | OUTv3
+        '/byHeader'     | [:]        | SerializeToVersionFieldCar  | INv3   | OUTv3
+        '/byHeader'     | [:]        | SerializeToVersionMethodCar | INv3   | OUTv3
+        '/byHeader?v=1' | [:]        | SerializeToVersionFieldCar  | INv1   | OUTv3
+        '/byHeader?v=1' | [:]        | SerializeToVersionMethodCar | INv1   | OUTv3
+        '/byHeader?v=1' | [:]        | SerializeToVersionFieldCar  | INv3   | OUTv3
+        '/byHeader?v=1' | [:]        | SerializeToVersionMethodCar | INv3   | OUTv3
+        '/byHeader'     | [v: ['1']] | SerializeToVersionFieldCar  | INv1   | OUTv1
+        '/byHeader'     | [v: ['1']] | SerializeToVersionMethodCar | INv1   | OUTv1
+        '/byHeader'     | [v: ['1']] | SerializeToVersionFieldCar  | INv3   | OUTv1
+        '/byHeader'     | [v: ['1']] | SerializeToVersionMethodCar | INv3   | OUTv1
 
-        '/byParam'      | [:]        | INv1   | OUTv3
-        '/byParam'      | [:]        | INv3   | OUTv3
-        '/byParam?v=1'  | [:]        | INv1   | OUTv1
-        '/byParam?v=1'  | [:]        | INv3   | OUTv1
-        '/byParam'      | [v: ['1']] | INv1   | OUTv3
-        '/byParam'      | [v: ['1']] | INv3   | OUTv3
+        '/byParam'      | [:]        | SerializeToVersionFieldCar  | INv1   | OUTv3
+        '/byParam'      | [:]        | SerializeToVersionMethodCar | INv1   | OUTv3
+        '/byParam'      | [:]        | SerializeToVersionFieldCar  | INv3   | OUTv3
+        '/byParam'      | [:]        | SerializeToVersionMethodCar | INv3   | OUTv3
+        '/byParam?v=1'  | [:]        | SerializeToVersionFieldCar  | INv1   | OUTv1
+        '/byParam?v=1'  | [:]        | SerializeToVersionMethodCar | INv1   | OUTv1
+        '/byParam?v=1'  | [:]        | SerializeToVersionFieldCar  | INv3   | OUTv1
+        '/byParam?v=1'  | [:]        | SerializeToVersionMethodCar | INv3   | OUTv1
+        '/byParam'      | [v: ['1']] | SerializeToVersionFieldCar  | INv1   | OUTv3
+        '/byParam'      | [v: ['1']] | SerializeToVersionMethodCar | INv1   | OUTv3
+        '/byParam'      | [v: ['1']] | SerializeToVersionFieldCar  | INv3   | OUTv3
+        '/byParam'      | [v: ['1']] | SerializeToVersionMethodCar | INv3   | OUTv3
 
-        '/byEither'     | [:]        | INv1   | OUTv3
-        '/byEither'     | [:]        | INv3   | OUTv3
-        '/byEither?v=1' | [:]        | INv1   | OUTv1
-        '/byEither?v=1' | [:]        | INv3   | OUTv1
-        '/byEither'     | [v: ['1']] | INv1   | OUTv1
-        '/byEither'     | [v: ['1']] | INv3   | OUTv1
+        '/byEither'     | [:]        | SerializeToVersionFieldCar  | INv1   | OUTv3
+        '/byEither'     | [:]        | SerializeToVersionMethodCar | INv1   | OUTv3
+        '/byEither'     | [:]        | SerializeToVersionFieldCar  | INv3   | OUTv3
+        '/byEither'     | [:]        | SerializeToVersionMethodCar | INv3   | OUTv3
+        '/byEither?v=1' | [:]        | SerializeToVersionFieldCar  | INv1   | OUTv1
+        '/byEither?v=1' | [:]        | SerializeToVersionMethodCar | INv1   | OUTv1
+        '/byEither?v=1' | [:]        | SerializeToVersionFieldCar  | INv3   | OUTv1
+        '/byEither?v=1' | [:]        | SerializeToVersionMethodCar | INv3   | OUTv1
+        '/byEither'     | [v: ['1']] | SerializeToVersionFieldCar  | INv1   | OUTv1
+        '/byEither'     | [v: ['1']] | SerializeToVersionMethodCar | INv1   | OUTv1
+        '/byEither'     | [v: ['1']] | SerializeToVersionFieldCar  | INv3   | OUTv1
+        '/byEither'     | [v: ['1']] | SerializeToVersionMethodCar | INv3   | OUTv1
     }
 }
