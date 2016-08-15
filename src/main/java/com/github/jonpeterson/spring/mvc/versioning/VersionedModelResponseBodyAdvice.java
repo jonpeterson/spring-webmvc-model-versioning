@@ -44,7 +44,7 @@ public class VersionedModelResponseBodyAdvice implements ResponseBodyAdvice {
 
     @Override
     public boolean supports(MethodParameter returnType, Class converterType) {
-        return returnType.hasMethodAnnotation(VersionedResponseBody.class);
+        return returnType.getMethodAnnotation(VersionedResponseBody.class) != null;
     }
 
     @Override

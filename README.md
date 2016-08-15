@@ -155,9 +155,9 @@ println restTemplate.exchange(
 See the tests under `src/test/groovy` for more.
 
 ## Compatibility
-* Compiled for Java 6
-* Tested with Spring 4.0.0.RELEASE - 4.3.0.RELEASE
-* Uses a version of [Jackson Model Versioning Module](https://github.com/jonpeterson/jackson-module-model-versioning) which is tested with Jackson 2.2 - 2.8.
+* Requires Java 6 or higher
+* Requires Spring 4.2 or higher (tested with Spring 4.2 - 4.3)
+* Requires Jackson 2.2 or higher (uses a version of [Jackson Model Versioning Module](https://github.com/jonpeterson/jackson-module-model-versioning) which is tested with Jackson 2.2 - 2.8).
 
 ## Getting Started with Gradle
 ```groovy
