@@ -32,23 +32,17 @@ import com.github.jonpeterson.jackson.module.versioning.JsonSerializeToVersion
 import com.github.jonpeterson.jackson.module.versioning.JsonVersionedModel
 import com.github.jonpeterson.jackson.module.versioning.VersionedModelConverter
 import com.github.jonpeterson.jackson.module.versioning.VersioningModule
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.autoconfigure.SpringBootApplication
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.boot.test.web.client.TestRestTemplate
-import org.springframework.context.annotation.Bean
-import org.springframework.http.HttpEntity
-import org.springframework.http.HttpMethod
+import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
-import org.springframework.test.context.ContextConfiguration
-import org.springframework.util.LinkedMultiValueMap
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter
+import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import spock.lang.Specification
 
-@SpringBootTest(classes = TestApplication, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@ContextConfiguration
 class VersioningTest extends Specification {
 
     /********************\
@@ -138,21 +132,12 @@ class VersioningTest extends Specification {
     }
 
 
-    /********************\
-    |* Test application *|
-    \********************/
+    /*******************\
+    |* Test controller *|
+    \*******************/
 
-    @Autowired
-    private TestRestTemplate restTemplate
-
-    @SpringBootApplication
     @RestController
-    static class TestApplication {
-
-        @Bean
-        ObjectMapper objectMapper() {
-            return new ObjectMapper().registerModule(new VersioningModule())
-        }
+    static class TestController {
 
         @RequestMapping(value = '/byHeader', consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
         @VersionedResponseBody(defaultVersion = '3', headerName = 'v')
@@ -181,20 +166,39 @@ class VersioningTest extends Specification {
     |* Test cases *|
     \**************/
 
+    private static final ObjectMapper objectMapper = new ObjectMapper().registerModule(new VersioningModule())
+
     private static INv1 = [model: 'honda:civic', year: 2016, new: 'true', modelVersion: '1']
     private static INv3 = [make: 'honda', model: 'civic', year: 2016, used: false, modelVersion: '3']
     private static OUTv1 = [model: 'somethingElse:civic', year: 2016, new: 'true', modelVersion: '1']
     private static OUTv3 = [make: 'somethingElse', model: 'civic', year: 2016, used: false, modelVersion: '3']
 
+
+    private MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new TestController())
+        .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
+        .setControllerAdvice(new VersionedModelResponseBodyAdvice())
+        .build()
+
     def 'post, update, and return'() {
         given:
+        def httpHeaders = new HttpHeaders()
+        httpHeaders.putAll(headers)
+
         inBody['@class'] = outBody['@class'] = clazz.name
 
-        expect:
-        with(restTemplate.exchange(url, HttpMethod.POST, new HttpEntity<Map>(inBody, new LinkedMultiValueMap<String, String>(headers)), Map)) {
-            statusCodeValue == 200
-            body == outBody
-        }
+
+        when:
+        def mvcResult = mockMvc.perform(
+            MockMvcRequestBuilders.post(url)
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .headers(httpHeaders)
+                .content(objectMapper.writeValueAsString(inBody))
+        ).andReturn()
+
+        then:
+        objectMapper.readValue(mvcResult.response.contentAsByteArray, Map) == outBody
+
 
         where:
         url             | headers    | clazz                       | inBody | outBody

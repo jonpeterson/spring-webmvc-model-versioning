@@ -1,24 +1,29 @@
 buildscript {
     ext {
+        testSpringVersions = ['3.0.0.RELEASE', '4.0.0.RELEASE', '4.1.0.RELEASE', '4.2.0.RELEASE', '4.3.0.RELEASE']
+
         // external dependency versions
         groovyVersion = '2.4.5'
         gradleVersion = '2.14.1'
         jacksonModuleModelVersioningVersion = '1.1.1'
         licensePluginVersion = '0.13.1'
         releasePluginVersion = '2.4.0'
+        servletApiVersion = '3.0.1'
+        slf4jVersion = '1.7.12'
         spockVersion = '1.0-groovy-2.4'
-        springVersion = '4.3.2.RELEASE'
-        springBootVersion = '1.4.0.RELEASE'
+        springVersion = "[${testSpringVersions.first()},)"
 
         // external dependencies
         groovy = "org.codehaus.groovy:groovy-all:${groovyVersion}"
         jacksonModuleModelVersioning = "com.github.jonpeterson:jackson-module-model-versioning:${jacksonModuleModelVersioningVersion}"
+        servletApi = "javax.servlet:javax.servlet-api:${servletApiVersion}"
+        slf4jFromJcl = "org.slf4j:jcl-over-slf4j:${slf4jVersion}"
+        slf4jFromLog4j = "org.slf4j:log4j-over-slf4j:${slf4jVersion}"
+        slf4jSimple = "org.slf4j:slf4j-simple:${slf4jVersion}"
         spockCore = "org.spockframework:spock-core:${spockVersion}"
         spockSpring = "org.spockframework:spock-spring:${spockVersion}"
         springWebMvc = "org.springframework:spring-webmvc:${springVersion}"
-        springBootStarterJetty = "org.springframework.boot:spring-boot-starter-jetty:${springBootVersion}"
-        springBootStarterTest = "org.springframework.boot:spring-boot-starter-test:${springBootVersion}"
-        springBootStarterWeb = "org.springframework.boot:spring-boot-starter-web:${springBootVersion}"
+        springTest = "org.springframework:spring-test:${springVersion}"
     }
 
     repositories {
@@ -62,11 +67,13 @@ dependencies {
     compile springWebMvc
 
     testCompile groovy
+    testCompile servletApi
+    testCompile slf4jFromJcl
+    testCompile slf4jFromLog4j
+    testCompile slf4jSimple
     testCompile spockCore
     testCompile spockSpring
-    testCompile springBootStarterJetty
-    testCompile springBootStarterWeb
-    testCompile springBootStarterTest
+    testCompile springTest
 }
 
 license {
@@ -77,6 +84,41 @@ license {
         groovy = 'SLASHSTAR_STYLE'
     }
 }
+
+// don't run tests with default test task
+test.excludes = ['**/*']
+
+// dynamically set up test executions for each version of Spring
+testSpringVersions.each { version ->
+    def safeVersion = version.replaceAll('\\.', '_')
+
+    configurations {
+        it."testSpring${safeVersion}Compile".extendsFrom testCompile
+        it."testSpring${safeVersion}Runtime".extendsFrom testRuntime
+    }
+
+    sourceSets{
+        it."testSpring$safeVersion" {
+            compileClasspath += sourceSets.main.output + sourceSets.test.output
+            runtimeClasspath += sourceSets.main.output + sourceSets.test.output
+        }
+    }
+
+    println springWebMvc.replace(springVersion, version)
+
+    dependencies {
+        it."testSpring${safeVersion}Compile" springWebMvc.replace(springVersion, version)
+        it."testSpring${safeVersion}Compile" springTest.replace(springVersion, version)
+    }
+
+    task "testSpring$safeVersion"(type: Test) {
+        testClassesDir = sourceSets.test.output.classesDir
+        classpath = sourceSets."testSpring$safeVersion".runtimeClasspath
+    }
+
+    test.dependsOn "testSpring$safeVersion"
+}
+
 
 task javadocJar(type: Jar) {
     dependsOn javadoc
@@ -125,15 +167,15 @@ uploadArchives {
             }
 
             pom.project {
-                name 'Jackson Model Versioning Module'
+                name 'Spring MVC Model Versioning'
                 packaging 'jar'
-                description 'Jackson 2.x module for handling versioning of models.'
-                url 'https://github.com/jonpeterson/jackson-module-model-versioning'
+                description 'Spring MVC binding for using Jackson Model Versioning Module.'
+                url 'https://github.com/jonpeterson/spring-webmvc-model-versioning'
 
                 scm {
-                    connection 'scm:git:git://github.com/jonpeterson/jackson-module-model-versioning.git'
-                    developerConnection 'scm:git:git@github.com:jonpeterson/jackson-module-model-versioning.git'
-                    url 'https://github.com/jonpeterson/jackson-module-model-versioning'
+                    connection 'scm:git:git://github.com/jonpeterson/spring-webmvc-model-versioning.git'
+                    developerConnection 'scm:git:git@github.com:jonpeterson/spring-webmvc-model-versioning.git'
+                    url 'https://github.com/jonpeterson/spring-webmvc-model-versioning'
                 }
 
                 licenses {

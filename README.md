@@ -101,7 +101,10 @@ class ToPastCarConverter implements VersionedModelConverter {
 ### Set up a REST endpoint
 **Configure the Jackson ObjectMapper used by Spring MVC to use the [Jackson Model Versioning Module](https://github.com/jonpeterson/jackson-module-model-versioning).**
 ```groovy
-???
+@Bean
+Jackson2ObjectMapperBuilder objectMapperBuilder() {
+    return Jackson2ObjectMapperBuilder.json().modulesToInstall(new VersioningModule())
+}
 ```
 
 **Create a REST endpoint**
@@ -121,14 +124,40 @@ Car createCar(@RequestBody Car car) {
 ### Test the endpoint
 **All that's left is to test it out.**
 ```groovy
-???
+def restTemplate = new RestTemplate(
+    messageConverters: [
+        new MappingJackson2HttpMessageConverter(new ObjectMapper().registerModule(new VersioningModule()))
+    ]
+)
+
+// POST version 1 JSON and request version 2 JSON response via URL query param
+println restTemplate.postForObject(
+    'http://localhost:8080/?modelVersion=2',
+    '{"model": "honda:civic", "year": 2016, "new": "true", "modelVersion": "1"],
+    String
+)
+// prints '{"make":"honda","model":"civic","year":2016,"new":"true","modelVersion":"2"}'
+
+// POST version 1 JSON and request version 2 JSON response via HTTP header
+println restTemplate.exchange(
+    'http://localhost:8080/',
+    HttpMethod.POST,
+    new HttpEntity<String>(
+        '{"model": "honda:civic", "year": 2016, "new": "true", "modelVersion": "1"]',
+        new LinkedMultiValueMap<String, String>('Model-Version': '2')
+    ),
+    String
+)
+// prints '{"make":"honda","model":"civic","year":2016,"new":"true","modelVersion":"2"}'
 ```
 
 ### More Examples
 See the tests under `src/test/groovy` for more.
 
 ## Compatibility
-Compiled for Java 6 and tested with Jackson 2.2 - 2.8.
+* Compiled for Java 6
+* Tested with Spring 4.0.0.RELEASE - 4.3.0.RELEASE
+* Uses a version of [Jackson Model Versioning Module](https://github.com/jonpeterson/jackson-module-model-versioning) which is tested with Jackson 2.2 - 2.8.
 
 ## Getting Started with Gradle
 ```groovy
