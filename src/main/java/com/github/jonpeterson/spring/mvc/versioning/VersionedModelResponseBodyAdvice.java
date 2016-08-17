@@ -72,6 +72,8 @@ public class VersionedModelResponseBodyAdvice implements ResponseBodyAdvice {
             targetVersion = versionedResponseBody.defaultVersion();
 
         try {
+            boolean serializeToSet = false;
+
             for(BeanPropertyDefinition beanPropertyDefinition: mapper.getSerializationConfig().introspect(mapper.getTypeFactory().constructType(body.getClass())).findProperties()) {
                 AnnotatedMember field = beanPropertyDefinition.getField();
                 AnnotatedMember setter = beanPropertyDefinition.getSetter();
@@ -80,8 +82,13 @@ public class VersionedModelResponseBodyAdvice implements ResponseBodyAdvice {
                         setter.setValue(body, targetVersion);
                     else
                         field.setValue(body, targetVersion);
+                    serializeToSet = true;
                 }
             }
+
+            if(!serializeToSet)
+                throw new RuntimeException("no @" + JsonSerializeToVersion.class.getSimpleName() + " annotation found on String field or setter method in " + body.getClass() + "; this is a requirement when using @" + VersionedResponseBody.class.getSimpleName());
+
         } catch(Exception e) {
             throw new RuntimeException("unable to set the version of the response body model", e);
         }

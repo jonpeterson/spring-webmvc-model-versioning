@@ -13,6 +13,8 @@ buildscript {
         spockVersion = '1.0-groovy-2.4'
         springVersion = "[${testSpringVersions.first()},)"
 
+        springBootVersion = '1.4.0.RELEASE'
+
         // external dependencies
         groovy = "org.codehaus.groovy:groovy-all:${groovyVersion}"
         jacksonModuleModelVersioning = "com.github.jonpeterson:jackson-module-model-versioning:${jacksonModuleModelVersioningVersion}"
@@ -24,6 +26,10 @@ buildscript {
         spockSpring = "org.spockframework:spock-spring:${spockVersion}"
         springWebMvc = "org.springframework:spring-webmvc:${springVersion}"
         springTest = "org.springframework:spring-test:${springVersion}"
+
+        springBootStarterJetty = "org.springframework.boot:spring-boot-starter-jetty:${springBootVersion}"
+        springBootStarterTest = "org.springframework.boot:spring-boot-starter-test:${springBootVersion}"
+        springBootStarterWeb = "org.springframework.boot:spring-boot-starter-web:${springBootVersion}"
     }
 
     repositories {
@@ -70,10 +76,14 @@ dependencies {
     testCompile servletApi
     testCompile slf4jFromJcl
     testCompile slf4jFromLog4j
-    testCompile slf4jSimple
+    //testCompile slf4jSimple
     testCompile spockCore
     testCompile spockSpring
     testCompile springTest
+
+    testCompile springBootStarterJetty
+    testCompile springBootStarterWeb
+    testCompile springBootStarterTest
 }
 
 license {

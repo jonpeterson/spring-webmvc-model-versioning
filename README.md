@@ -99,11 +99,16 @@ class ToPastCarConverter implements VersionedModelConverter {
 ```
 
 ### Set up a REST endpoint
-**Configure the Jackson ObjectMapper used by Spring MVC to use the [Jackson Model Versioning Module](https://github.com/jonpeterson/jackson-module-model-versioning).**
+**Configure the Jackson ObjectMapper used by Spring MVC to use the [Jackson Model Versioning Module](https://github.com/jonpeterson/jackson-module-model-versioning) and import VersionedModelResponseBodyAdvice.**
 ```groovy
-@Bean
-Jackson2ObjectMapperBuilder objectMapperBuilder() {
-    return Jackson2ObjectMapperBuilder.json().modulesToInstall(new VersioningModule())
+@Configuration
+@Import(VersionedModelResponseBodyAdvice)
+class SpringMvcVersioningConfiguration {
+
+    @Bean
+    Jackson2ObjectMapperBuilder objectMapperBuilder() {
+        return Jackson2ObjectMapperBuilder.json().modulesToInstall(new VersioningModule())
+    }
 }
 ```
 
